@@ -3,6 +3,12 @@ let context;
 let HEIGHT;
 let WIDTH;
 let frames = 0;
+let currentState;
+const states = {
+  start: 0,
+  playing: 1,
+  finished: 2,
+};
 const floor = {
   y: 550,
   height: 50,
@@ -28,9 +34,13 @@ const block = {
     this.velocity += this.gravity;
     this.y += this.velocity;
 
-    if (this.y > (floor.y - this.height)) {
+    if (
+      this.y > (floor.y - this.height) &&
+      currentState !== states.finished
+    ) {
       this.y = floor.y - this.height;
       this.jumpsQuantity = 0;
+      this.velocity = 0;
     }
   },
   jump: function() {
@@ -64,46 +74,77 @@ const obstacles = {
 
     let length = this._blocks.length;
     for (let i = 0; i < length; i++) {
-      const block = this._blocks[i];
+      const obstacle = this._blocks[i];
       const velocity = 6;
 
-      block.x -= velocity;
-      
-      if (block.x <= -block.width) {
+      obstacle.x -= velocity;
+
+      if (
+        block.x < obstacle.x + obstacle.width &&
+        block.x + block.width >= obstacle.x &&
+        block.y + block.height >= floor.y - obstacle.height
+      ) {
+        currentState = states.finished;
+      } else if (obstacle.x <= -obstacle.width) {
         this._blocks.splice(i, 1);
         length--;
         i--;
       }
     }
   },
+  clear: function() {
+    this._blocks = [];
+  },
   draw: function() {
     const length = this._blocks.length;
     for (let i = 0; i < length; i++) {
-      const block = this._blocks[i];
+      const obstacle = this._blocks[i];
 
-      context.fillStyle = block.color;
-      context.fillRect(block.x, floor.y - block.height, block.width, block.height);
+      context.fillStyle = obstacle.color;
+      context.fillRect(obstacle.x, floor.y - obstacle.height, obstacle.width, obstacle.height);
     }
   },
 };
 
 function handleClickOnScreen(event) {
-  block.jump();
+  if (currentState === states.playing) {
+    block.jump();
+  } else if (currentState === states.start) {
+    currentState = states.playing;
+  } else if (currentState === states.finished && block.y >= 2 * HEIGHT) {
+    currentState = states.start;
+    block.velocity = 0;
+    block.y = 0;
+  }
 }
 
 function updateScreen() {
   frames++;
 
   block.update();
-  obstacles.update();
+
+  if (currentState === states.playing) {
+    obstacles.update();
+  } else if (currentState === states.finished) {
+    obstacles.clear();
+  }
 }
 
 function draw() {
   context.fillStyle = "#80daff";
   context.fillRect(0, 0, WIDTH, HEIGHT);
 
+  if (currentState === states.start) {
+    context.fillStyle = 'green';
+    context.fillRect((WIDTH / 2) - 50, (HEIGHT / 2) - 50, 100, 100);
+  } else if (currentState === states.finished) {
+    context.fillStyle = 'red';
+    context.fillRect((WIDTH / 2) - 50, (HEIGHT / 2) - 50, 100, 100);
+  } else if (currentState === states.playing) {
+    obstacles.draw();
+  }
+  
   floor.draw();
-  obstacles.draw();
   block.draw();
 }
 
@@ -133,6 +174,7 @@ function main() {
 
   document.addEventListener("mousedown", handleClickOnScreen);
   
+  currentState = states.start;
   startGame();
 }
 
