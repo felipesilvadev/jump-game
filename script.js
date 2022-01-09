@@ -4,6 +4,7 @@ let HEIGHT;
 let WIDTH;
 let frames = 0;
 let currentState;
+let record;
 const states = {
   start: 0,
   playing: 1,
@@ -29,6 +30,7 @@ const block = {
   velocity: 0,
   forceJump: 23.6,
   jumpsQuantity: 0,
+  score: 0,
 
   update: function() {
     this.velocity += this.gravity;
@@ -42,6 +44,17 @@ const block = {
       this.jumpsQuantity = 0;
       this.velocity = 0;
     }
+  },
+  reset: function() {
+    this.velocity = 0;
+    this.y = 0;
+
+    if (this.score > record) {
+      localStorage.setItem('game-record', this.score);
+      record = this.score;
+    }
+
+    this.score = 0;
   },
   jump: function() {
     if (this.jumpsQuantity < 3) {
@@ -62,7 +75,7 @@ const obstacles = {
   insert: function() {
     this._blocks.push({
       x: WIDTH,
-      width: Math.floor(21 * Math.random()) + 30, 
+      width: 50,
       height: Math.floor(121 * Math.random()) + 30,
       color: this.colors[Math.floor(5 * Math.random())]
     });
@@ -85,6 +98,8 @@ const obstacles = {
         block.y + block.height >= floor.y - obstacle.height
       ) {
         currentState = states.finished;
+      } else if (obstacle.x === 0) {
+        block.score++;
       } else if (obstacle.x <= -obstacle.width) {
         this._blocks.splice(i, 1);
         length--;
@@ -113,8 +128,8 @@ function handleClickOnScreen(event) {
     currentState = states.playing;
   } else if (currentState === states.finished && block.y >= 2 * HEIGHT) {
     currentState = states.start;
-    block.velocity = 0;
-    block.y = 0;
+    obstacles.clear();
+    block.reset();
   }
 }
 
@@ -125,8 +140,6 @@ function updateScreen() {
 
   if (currentState === states.playing) {
     obstacles.update();
-  } else if (currentState === states.finished) {
-    obstacles.clear();
   }
 }
 
@@ -134,12 +147,39 @@ function draw() {
   context.fillStyle = "#80daff";
   context.fillRect(0, 0, WIDTH, HEIGHT);
 
+  context.fillStyle = "#fff";
+  context.font = "50px Arial";
+  context.fillText(block.score, 30, 68);
+
   if (currentState === states.start) {
     context.fillStyle = 'green';
     context.fillRect((WIDTH / 2) - 50, (HEIGHT / 2) - 50, 100, 100);
   } else if (currentState === states.finished) {
     context.fillStyle = 'red';
     context.fillRect((WIDTH / 2) - 50, (HEIGHT / 2) - 50, 100, 100);
+
+    context.save();
+    context.translate(WIDTH / 2, HEIGHT / 2);
+    context.fillStyle = '#fff';
+
+    if (block.score > record) {
+      context.fillText('Novo Record!', -150, -65);
+    } else if (record < 10) {
+      context.fillText(`Record ${record}`, -99, -65);
+    } else if (record >= 10 && record < 100) {
+      context.fillText(`Record ${record}`, -112, -65);
+    } else {
+      context.fillText(`Record ${record}`, -125, -65);
+    }
+
+    if (block.score < 10)
+      context.fillText(block.score, -13, 19);
+    else if (block.score >= 10 && block.score < 100)
+      context.fillText(block.score, -26, 19);
+    else
+      context.fillText(block.score, -39, 19);
+    
+    context.restore();
   } else if (currentState === states.playing) {
     obstacles.draw();
   }
@@ -175,6 +215,10 @@ function main() {
   document.addEventListener("mousedown", handleClickOnScreen);
   
   currentState = states.start;
+  record = localStorage.getItem("game-record");
+
+  if (!record) record = 0;
+
   startGame();
 }
 
